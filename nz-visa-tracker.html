@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NZ Visa Tracker 🇳🇿</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --kiwi:    #00875A;
+      --kiwi-lt: #00B074;
+      --sky:     #006EAD;
+      --sand:    #F5F0E8;
+      --ink:     #1A1F2E;
+      --red:     #D94040;
+      --gold:    #E8A020;
+      --card:    #FFFFFF;
+      --border:  #E2DDD6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--sand);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    h1,h2,h3,.font-display { font-family: 'Syne', sans-serif; }
+
+    /* ── Header ── */
+    .header-bar {
+      background: var(--ink);
+      color: #fff;
+      padding: 18px 20px 14px;
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-bar h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+    .flag { font-size: 1.4rem; margin-right: 8px; }
+
+    /* ── Progress Ring ── */
+    .progress-wrap {
+      background: var(--ink);
+      padding: 20px;
+      display: flex; align-items: center; gap: 20px;
+      border-bottom: 3px solid var(--kiwi);
+    }
+    .ring-svg { flex-shrink: 0; }
+    .ring-bg  { fill: none; stroke: rgba(255,255,255,.12); stroke-width: 6; }
+    .ring-fg  { fill: none; stroke: var(--kiwi-lt); stroke-width: 6; stroke-linecap: round;
+                stroke-dasharray: 251; stroke-dashoffset: 251;
+                transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1); transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-pct  { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: #fff; }
+    .ring-sub  { font-size: .6rem; color: rgba(255,255,255,.5); letter-spacing:.05em; text-transform:uppercase; }
+    .progress-text h2 { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:#fff; }
+    .progress-text p  { font-size:.8rem; color:rgba(255,255,255,.6); margin-top:2px; }
+    .status-pill {
+      display:inline-block; padding:2px 10px; border-radius:99px;
+      font-size:.7rem; font-weight:600; letter-spacing:.04em;
+      margin-top:6px; text-transform:uppercase;
+    }
+    .pill-warn { background:rgba(232,160,32,.18); color: var(--gold); }
+    .pill-ok   { background:rgba(0,176,116,.18); color: var(--kiwi-lt); }
+    .pill-na   { background:rgba(255,255,255,.1); color:rgba(255,255,255,.5); }
+
+    /* ── Tab Bar ── */
+    .tab-bar {
+      display: flex; background: #fff; border-bottom: 1px solid var(--border);
+      position: sticky; top: 57px; z-index: 39;
+    }
+    .tab-btn {
+      flex: 1; padding: 12px 4px; font-family:'Syne',sans-serif; font-size:.78rem;
+      font-weight: 700; letter-spacing:.03em; text-transform:uppercase;
+      border: none; background: transparent; cursor: pointer; color: #888;
+      border-bottom: 3px solid transparent; transition: all .2s;
+    }
+    .tab-btn.active { color: var(--kiwi); border-bottom-color: var(--kiwi); }
+
+    /* ── Section ── */
+    .section { display: none; padding: 16px; padding-bottom: 100px; }
+    .section.active { display: block; }
+
+    /* ── Checklist ── */
+    .task-card {
+      background: var(--card); border-radius: 12px;
+      border: 1.5px solid var(--border); margin-bottom: 10px;
+      transition: border-color .2s, box-shadow .2s;
+      overflow: hidden;
+    }
+    .task-card.done { border-color: var(--kiwi); background: #f0fdf6; }
+    .task-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer;
+    }
+    .task-checkbox {
+      width: 22px; height: 22px; flex-shrink: 0;
+      border-radius: 6px; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; transition: all .2s; cursor: pointer;
+    }
+    .task-card.done .task-checkbox { background: var(--kiwi); border-color: var(--kiwi); }
+    .checkmark { display: none; color: #fff; font-size: .85rem; font-weight: 700; }
+    .task-card.done .checkmark { display: block; }
+    .task-title { flex: 1; font-size: .92rem; font-weight: 500; }
+    .task-card.done .task-title { text-decoration: line-through; color: #888; }
+    .task-tag {
+      font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 99px;
+    }
+    .tag-required { background: #FEE2E2; color: var(--red); }
+    .tag-optional { background: #F0FDF4; color: var(--kiwi); }
+    .expand-btn { color: #aaa; font-size: .75rem; margin-left: 4px; transition: transform .2s; }
+    .task-card.expanded .expand-btn { transform: rotate(180deg); }
+
+    .task-body {
+      display: none; padding: 0 16px 14px 50px;
+      border-top: 1px dashed var(--border);
+      padding-top: 12px; margin-top: -1px;
+    }
+    .task-card.expanded .task-body { display: block; }
+    .task-body p { font-size: .82rem; color: #666; line-height: 1.5; }
+    .upload-zone {
+      margin-top: 10px; border: 2px dashed var(--border);
+      border-radius: 8px; padding: 12px; text-align: center;
+      font-size: .78rem; color: #aaa; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .upload-zone:hover { border-color: var(--kiwi); background: #f0fdf6; color: var(--kiwi); }
+    .upload-zone input { display: none; }
+    .uploaded-files { margin-top: 8px; }
+    .file-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--sand); border: 1px solid var(--border);
+      border-radius: 6px; padding: 3px 8px; font-size: .72rem;
+      color: var(--ink); margin: 3px 2px;
+    }
+    .file-chip button { background: none; border: none; cursor: pointer; color: #aaa; font-size:.8rem; padding:0 0 0 2px; }
+
+    /* ── Missing Items ── */
+    .missing-card {
+      background: #FFF5F5; border: 1.5px solid #FCC; border-radius: 12px; padding: 16px; margin-bottom: 10px;
+    }
+    .missing-card h3 { font-family:'Syne',sans-serif; font-size:.85rem; font-weight:700; color:var(--red); margin-bottom:8px; }
+    .missing-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px dashed #FCC; font-size: .85rem;
+    }
+    .missing-item:last-child { border-bottom: none; }
+    .missing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+    .all-done-card {
+      background: #F0FDF6; border: 1.5px solid var(--kiwi); border-radius: 12px;
+      padding: 24px; text-align: center;
+    }
+    .all-done-card .emoji { font-size: 2.5rem; }
+    .all-done-card h3 { font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem; color:var(--kiwi); margin:8px 0 4px; }
+    .all-done-card p { font-size: .82rem; color: #555; }
+
+    /* ── Notes ── */
+    .note-card {
+      background: #FFFBF0; border: 1.5px solid #F5E0A0; border-radius: 12px;
+      padding: 14px; margin-bottom: 10px; position: relative;
+    }
+    .note-card .note-text { font-size: .88rem; line-height: 1.6; white-space: pre-wrap; }
+    .note-card .note-time { font-size: .7rem; color: #aaa; margin-top: 6px; }
+    .note-card .delete-note {
+      position: absolute; top: 10px; right: 10px;
+      background: none; border: none; cursor: pointer; color: #ccc; font-size: .9rem;
+    }
+    .note-card .delete-note:hover { color: var(--red); }
+    .add-note-area textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 12px; font-family: 'DM Sans', sans-serif; font-size: .9rem;
+      background: #fff; resize: vertical; min-height: 100px; outline: none;
+      transition: border-color .2s;
+    }
+    .add-note-area textarea:focus { border-color: var(--gold); }
+    .btn-save-note {
+      margin-top: 10px; width: 100%; padding: 12px;
+      background: var(--gold); color: #fff; font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: .9rem; border: none; border-radius: 10px;
+      cursor: pointer; letter-spacing: .03em; transition: background .2s;
+    }
+    .btn-save-note:hover { background: #c98500; }
+
+    /* ── History ── */
+    .history-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .history-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: .9rem;
+    }
+    .h-check { background: #F0FDF6; }
+    .h-note  { background: #FFFBF0; }
+    .h-file  { background: #EFF6FF; }
+    .history-item .h-action { font-size: .85rem; font-weight: 500; }
+    .history-item .h-time   { font-size: .72rem; color: #aaa; margin-top: 2px; }
+    .empty-state { text-align:center; padding:40px 0; color:#bbb; font-size:.9rem; }
+    .empty-state .e-icon { font-size:2.5rem; margin-bottom:8px; }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed; bottom: 24px; right: 20px; z-index: 50;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--gold); color: #fff; font-size: 1.3rem;
+      border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(232,160,32,.45);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .fab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(232,160,32,.6); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 60;
+      background: rgba(26,31,46,.6); backdrop-filter: blur(4px);
+      align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: #fff; border-radius: 20px 20px 0 0; width: 100%;
+      max-width: 480px; padding: 20px 20px 36px;
+      animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp { from { transform: translateY(40px); opacity:0; } to { transform:none; opacity:1; } }
+    .modal-handle { width:40px; height:4px; background:#e5e5e5; border-radius:2px; margin:0 auto 16px; }
+    .modal-sheet h2 { font-family:'Syne',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:12px; }
+    .modal-sheet textarea {
+      width:100%; border:1.5px solid var(--border); border-radius:10px;
+      padding:12px; font-family:'DM Sans',sans-serif; font-size:.9rem;
+      background:var(--sand); resize:vertical; min-height:120px; outline:none;
+    }
+    .modal-sheet textarea:focus { border-color:var(--gold); }
+    .modal-btns { display:flex; gap:10px; margin-top:12px; }
+    .btn-primary {
+      flex:1; padding:13px; background:var(--kiwi); color:#fff;
+      font-family:'Syne',sans-serif; font-weight:700; font-size:.9rem;
+      border:none; border-radius:10px; cursor:pointer; transition:background .2s;
+    }
+    .btn-primary:hover { background:var(--kiwi-lt); }
+    .btn-cancel {
+      padding:13px 18px; background:var(--sand); color:var(--ink);
+      font-family:'Syne',sans-serif; font-weight:600; font-size:.9rem;
+      border:1.5px solid var(--border); border-radius:10px; cursor:pointer;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:var(--ink); color:#fff; padding:10px 20px; border-radius:10px;
+      font-size:.82rem; font-weight:500; opacity:0; transition:all .3s; z-index:99;
+      white-space:nowrap; pointer-events:none;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* Section label */
+    .section-label {
+      font-family:'Syne',sans-serif; font-size:.7rem; font-weight:700;
+      letter-spacing:.1em; text-transform:uppercase; color:#aaa;
+      margin: 0 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border);
+    }
+
+    /* Clear history btn */
+    .btn-clear {
+      font-size:.72rem; color:#bbb; background:none; border:1px solid var(--border);
+      border-radius:6px; padding:4px 10px; cursor:pointer; float:right; margin-top:-2px;
+    }
+    .btn-clear:hover { color:var(--red); border-color:var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header-bar">
+  <div style="display:flex;align-items:center">
+    <span class="flag">🇳🇿</span>
+    <h1>NZ Visa Tracker</h1>
+  </div>
+  <div style="font-size:.72rem;color:rgba(255,255,255,.4);font-family:'Syne',sans-serif;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Student Visa</div>
+</header>
+
+<!-- ── PROGRESS ── -->
+<div class="progress-wrap">
+  <div style="position:relative;width:80px;height:80px;flex-shrink:0">
+    <svg class="ring-svg" width="80" height="80" viewBox="0 0 88 88">
+      <circle class="ring-bg" cx="44" cy="44" r="40"/>
+      <circle class="ring-fg" id="ringFg" cx="44" cy="44" r="40"/>
+    </svg>
+    <div class="ring-label">
+      <span class="ring-pct" id="ringPct">0%</span>
+      <span class="ring-sub">done</span>
+    </div>
+  </div>
+  <div class="progress-text">
+    <h2 id="progressTitle">Let's get started</h2>
+    <p id="progressDesc">0 of 7 documents ready</p>
+    <span class="status-pill pill-na" id="statusPill">Not started</span>
+  </div>
+</div>
+
+<!-- ── TAB BAR ── -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('checklist',this)">✅ Checklist</button>
+  <button class="tab-btn" onclick="showTab('missing',this)">❌ Missing</button>
+  <button class="tab-btn" onclick="showTab('notes',this)">📝 Notes</button>
+  <button class="tab-btn" onclick="showTab('history',this)">🕒 History</button>
+</nav>
+
+<!-- ════════════════════════════════
+     TAB 1 — CHECKLIST
+     ════════════════════════════════ -->
+<section class="section active" id="tab-checklist">
+  <p class="section-label">Required Documents</p>
+  <ul id="taskList" style="list-style:none;padding:0;margin:0"></ul>
+</section>
+
+<!-- ════════════════════════════════
+     TAB 2 — MISSING ITEMS
+     ════════════════════════════════ -->
+<section class="section" id="tab-missing">
+  <p class="section-label">Items Still Needed</p>
+  <div id="missingList"></div>
+</section>
+
+<!-- ════════════════════════════════
+     TAB 3 — NOTES
+     ════════════════════════════════ -->
+<section class="section" id="tab-notes">
+  <p class="section-label">Special Notes</p>
+
+  <div class="add-note-area" style="margin-bottom:20px">
+    <textarea id="inlineNoteInput" placeholder="Add a note about your visa application…"></textarea>
+    <button class="btn-save-note" onclick="saveInlineNote()">💾 Save Note</button>
+  </div>
+
+  <p class="section-label">Saved Notes</p>
+  <div id="notesList"></div>
+</section>
+
+<!-- ════════════════════════════════
+     TAB 4 — HISTORY
+     ════════════════════════════════ -->
+<section class="section" id="tab-history">
+  <p class="section-label">
+    Activity Log
+    <button class="btn-clear" onclick="clearHistory()">Clear all</button>
+  </p>
+  <div id="historyList"></div>
+</section>
+
+<!-- ── FAB ── -->
+<button class="fab" onclick="openModal()" title="Quick note">📝</button>
+
+<!-- ── QUICK NOTE MODAL ── -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2>Quick Note</h2>
+    <textarea id="modalNoteInput" placeholder="Write something to remember…"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveModalNote()">💾 Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP LOGIC
+     ══════════════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────
+   DATA — NZ Student Visa Checklist Template
+   ───────────────────────────────────────────── */
+const NZ_VISA_TEMPLATE = [
+  {
+    id: "passport",
+    title: "Passport Copy",
+    tag: "required",
+    description: "Clear scanned copy of the bio-data page of your valid passport. Must be valid for at least 3 months beyond your intended stay.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "offer_letter",
+    title: "Offer Letter",
+    tag: "required",
+    description: "Official acceptance/offer letter from your New Zealand institution confirming your enrollment.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "sop",
+    title: "Statement of Purpose (SOP)",
+    tag: "required",
+    description: "A well-written statement explaining why you chose this course, institution, and your future goals.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "transcripts",
+    title: "Academic Transcripts",
+    tag: "required",
+    description: "Official academic transcripts from all previously attended educational institutions.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "financial_proof",
+    title: "Financial Proof",
+    tag: "required",
+    description: "Bank statements (last 6 months), scholarship letters, or sponsorship documents proving you can fund your stay.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "medical_report",
+    title: "Medical Report (eMedical)",
+    tag: "required",
+    description: "Health examination completed through an Immigration New Zealand approved physician via the eMedical system.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "police_clearance",
+    title: "Police Clearance Certificate",
+    tag: "required",
+    description: "Certificate from the police authority in every country you've lived in for 12+ months in the past 10 years.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "english_proof",
+    title: "English Language Proof",
+    tag: "optional",
+    description: "IELTS / TOEFL / PTE score report if your medium of instruction was not English.",
+    completed: false,
+    files: []
+  },
+  {
+    id: "photo",
+    title: "Passport-size Photo",
+    tag: "optional",
+    description: "Recent colour passport photo (35×45 mm, white background, taken within the last 6 months).",
+    completed: false,
+    files: []
+  }
+];
+
+/* ─────────────────────────────────────────────
+   STATE — stored in localStorage
+   ───────────────────────────────────────────── */
+function loadState() {
+  try {
+    const saved = localStorage.getItem("nz_visa_checklist");
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(NZ_VISA_TEMPLATE));  // deep clone defaults
+}
+function saveState() {
+  localStorage.setItem("nz_visa_checklist", JSON.stringify(checklist));
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem("nz_visa_history") || "[]"); } catch(e) { return []; }
+}
+function saveHistory() { localStorage.setItem("nz_visa_history", JSON.stringify(history)); }
+
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem("nz_visa_notes") || "[]"); } catch(e) { return []; }
+}
+function saveNotes() { localStorage.setItem("nz_visa_notes", JSON.stringify(notes)); }
+
+let checklist = loadState();
+let history   = loadHistory();
+let notes     = loadNotes();
+
+/* ─────────────────────────────────────────────
+   HISTORY HELPERS
+   ───────────────────────────────────────────── */
+function addHistory(action, type="check") {
+  history.unshift({ action, type, timestamp: new Date().toISOString() });
+  if (history.length > 100) history = history.slice(0, 100);
+  saveHistory();
+}
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'}) + ' · ' +
+         d.toLocaleTimeString('en-NZ',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ─────────────────────────────────────────────
+   PROGRESS
+   ───────────────────────────────────────────── */
+function updateProgress() {
+  const total     = checklist.length;
+  const required  = checklist.filter(t => t.tag === "required");
+  const completed = checklist.filter(t => t.completed).length;
+  const pct       = Math.round((completed / total) * 100);
+  const reqDone   = required.filter(t => t.completed).length;
+
+  // ring
+  const circumference = 2 * Math.PI * 40; // ≈ 251.3
+  const offset = circumference - (pct / 100) * circumference;
+  document.getElementById("ringFg").style.strokeDashoffset = offset;
+  document.getElementById("ringPct").textContent = pct + "%";
+
+  // text
+  document.getElementById("progressDesc").textContent =
+    `${completed} of ${total} documents ready`;
+
+  const pill  = document.getElementById("statusPill");
+  const title = document.getElementById("progressTitle");
+
+  if (pct === 0) {
+    title.textContent = "Let's get started";
+    pill.textContent  = "Not started";
+    pill.className    = "status-pill pill-na";
+  } else if (reqDone < required.length) {
+    title.textContent = "In progress…";
+    pill.textContent  = `${required.length - reqDone} required missing`;
+    pill.className    = "status-pill pill-warn";
+  } else if (pct < 100) {
+    title.textContent = "Almost there!";
+    pill.textContent  = "Required docs done ✓";
+    pill.className    = "status-pill pill-ok";
+  } else {
+    title.textContent = "Application ready! 🎉";
+    pill.textContent  = "All docs complete";
+    pill.className    = "status-pill pill-ok";
+  }
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — CHECKLIST
+   ───────────────────────────────────────────── */
+function renderChecklist() {
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+
+  checklist.forEach((task, idx) => {
+    const li = document.createElement("li");
+    li.className = "task-card" + (task.completed ? " done" : "");
+    li.setAttribute("data-id", task.id);
+
+    const filesHtml = task.files.map((f, fi) => `
+      <span class="file-chip">
+        📎 ${escHtml(f.name)}
+        <button onclick="removeFile(${idx},${fi})" title="Remove">×</button>
+      </span>`).join("");
+
+    li.innerHTML = `
+      <div class="task-header" onclick="toggleExpand(this)">
+        <div class="task-checkbox" onclick="event.stopPropagation();toggleTask(${idx})">
+          <span class="checkmark">✓</span>
+        </div>
+        <span class="task-title">${escHtml(task.title)}</span>
+        <span class="task-tag ${task.tag === 'required' ? 'tag-required' : 'tag-optional'}">${task.tag}</span>
+        <span class="expand-btn">▼</span>
+      </div>
+      <div class="task-body">
+        <p>${escHtml(task.description)}</p>
+        <label class="upload-zone" title="Upload document">
+          <input type="file" multiple onchange="handleFileUpload(event,${idx})" />
+          📎 Attach file(s)
+        </label>
+        <div class="uploaded-files">${filesHtml}</div>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+
+  updateProgress();
+}
+
+function toggleExpand(header) {
+  const card = header.closest(".task-card");
+  card.classList.toggle("expanded");
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ─────────────────────────────────────────────
+   TOGGLE TASK
+   ───────────────────────────────────────────── */
+function toggleTask(idx) {
+  checklist[idx].completed = !checklist[idx].completed;
+  saveState();
+  const action = checklist[idx].completed
+    ? `Marked complete: ${checklist[idx].title}`
+    : `Unchecked: ${checklist[idx].title}`;
+  addHistory(action, "check");
+  renderChecklist();
+  renderMissing();
+  renderHistory();
+  showToast(checklist[idx].completed ? "✅ Marked as done!" : "↩️ Marked as pending");
+}
+
+/* ─────────────────────────────────────────────
+   FILE UPLOAD
+   ───────────────────────────────────────────── */
+function handleFileUpload(event, idx) {
+  const files = Array.from(event.target.files);
+  files.forEach(file => {
+    checklist[idx].files.push({ name: file.name, size: file.size });
+    addHistory(`Attached file "${file.name}" to ${checklist[idx].title}`, "file");
+  });
+  saveState();
+  renderChecklist();
+  renderHistory();
+  showToast(`📎 ${files.length} file(s) attached`);
+}
+
+function removeFile(taskIdx, fileIdx) {
+  const fn = checklist[taskIdx].files[fileIdx].name;
+  checklist[taskIdx].files.splice(fileIdx, 1);
+  saveState();
+  addHistory(`Removed file "${fn}" from ${checklist[taskIdx].title}`, "file");
+  renderChecklist();
+  renderHistory();
+  showToast("🗑️ File removed");
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — MISSING
+   ───────────────────────────────────────────── */
+function renderMissing() {
+  const container = document.getElementById("missingList");
+  const missing = checklist.filter(t => !t.completed);
+
+  if (missing.length === 0) {
+    container.innerHTML = `
+      <div class="all-done-card">
+        <div class="emoji">🎉</div>
+        <h3>All Documents Ready!</h3>
+        <p>You've completed your entire NZ visa document checklist. You're all set to apply!</p>
+      </div>`;
+    return;
+  }
+
+  const req = missing.filter(t => t.tag === "required");
+  const opt = missing.filter(t => t.tag === "optional");
+
+  let html = "";
+  if (req.length) {
+    html += `<div class="missing-card">
+      <h3>❌ Required — ${req.length} missing</h3>`;
+    req.forEach(t => {
+      html += `<div class="missing-item"><span class="missing-dot"></span><span>${escHtml(t.title)}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  if (opt.length) {
+    html += `<div class="missing-card" style="background:#FFFBF0;border-color:#F5E0A0">
+      <h3 style="color:var(--gold)">⚠️ Optional — ${opt.length} pending</h3>`;
+    opt.forEach(t => {
+      html += `<div class="missing-item" style="border-bottom-color:#F5E0A0"><span class="missing-dot" style="background:var(--gold)"></span><span>${escHtml(t.title)}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — NOTES
+   ───────────────────────────────────────────── */
+function renderNotesList() {
+  const container = document.getElementById("notesList");
+  if (!notes.length) {
+    container.innerHTML = `<div class="empty-state"><div class="e-icon">📓</div><p>No notes yet. Add one above.</p></div>`;
+    return;
+  }
+  container.innerHTML = notes.map((n, i) => `
+    <div class="note-card">
+      <div class="note-text">${escHtml(n.text)}</div>
+      <div class="note-time">🕒 ${formatTime(n.timestamp)}</div>
+      <button class="delete-note" onclick="deleteNote(${i})" title="Delete">🗑</button>
+    </div>`).join("");
+}
+
+function saveInlineNote() {
+  const inp = document.getElementById("inlineNoteInput");
+  const text = inp.value.trim();
+  if (!text) { showToast("⚠️ Please write something first"); return; }
+  notes.unshift({ text, timestamp: new Date().toISOString() });
+  saveNotes();
+  addHistory("Added a note", "note");
+  inp.value = "";
+  renderNotesList();
+  renderHistory();
+  showToast("📝 Note saved!");
+}
+
+function deleteNote(idx) {
+  notes.splice(idx, 1);
+  saveNotes();
+  renderNotesList();
+  showToast("🗑️ Note deleted");
+}
+
+/* ─────────────────────────────────────────────
+   RENDER — HISTORY
+   ───────────────────────────────────────────── */
+function renderHistory() {
+  const container = document.getElementById("historyList");
+  if (!history.length) {
+    container.innerHTML = `<div class="empty-state"><div class="e-icon">🕒</div><p>No activity yet.</p></div>`;
+    return;
+  }
+  container.innerHTML = history.map(h => {
+    const iconMap = { check: "✅", note: "📝", file: "📎" };
+    const classMap = { check: "h-check", note: "h-note", file: "h-file" };
+    return `
+      <div class="history-item">
+        <div class="history-icon ${classMap[h.type] || 'h-check'}">${iconMap[h.type] || "📋"}</div>
+        <div>
+          <div class="h-action">${escHtml(h.action)}</div>
+          <div class="h-time">${formatTime(h.timestamp)}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function clearHistory() {
+  if (!confirm("Clear all activity history?")) return;
+  history = [];
+  saveHistory();
+  renderHistory();
+  showToast("🗑️ History cleared");
+}
+
+/* ─────────────────────────────────────────────
+   MODAL (Quick Note via FAB)
+   ───────────────────────────────────────────── */
+function openModal() {
+  document.getElementById("noteModal").classList.add("open");
+  setTimeout(() => document.getElementById("modalNoteInput").focus(), 300);
+}
+function closeModal() {
+  document.getElementById("noteModal").classList.remove("open");
+  document.getElementById("modalNoteInput").value = "";
+}
+function saveModalNote() {
+  const text = document.getElementById("modalNoteInput").value.trim();
+  if (!text) { showToast("⚠️ Please write something first"); return; }
+  notes.unshift({ text, timestamp: new Date().toISOString() });
+  saveNotes();
+  addHistory("Added a note", "note");
+  renderNotesList();
+  renderHistory();
+  closeModal();
+  showToast("📝 Note saved!");
+}
+// close on overlay click
+document.getElementById("noteModal").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ─────────────────────────────────────────────
+   TABS
+   ───────────────────────────────────────────── */
+function showTab(name, btn) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+  if (name === "missing")  renderMissing();
+  if (name === "notes")    renderNotesList();
+  if (name === "history")  renderHistory();
+}
+
+/* ─────────────────────────────────────────────
+   TOAST
+   ───────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ─────────────────────────────────────────────
+   INIT
+   ───────────────────────────────────────────── */
+renderChecklist();
+renderMissing();
+renderNotesList();
+renderHistory();
+
+/* ─────────────────────────────────────────────
+   DAILY MISSING-ITEMS REMINDER
+   Logs a reminder to history once per day
+   ───────────────────────────────────────────── */
+(function dailyReminder() {
+  const lastReminder = localStorage.getItem("nz_last_reminder");
+  const today = new Date().toDateString();
+  if (lastReminder === today) return;
+  const missing = checklist.filter(t => !t.completed && t.tag === "required");
+  if (missing.length > 0) {
+    addHistory(`📅 Daily reminder: ${missing.length} required document(s) still missing`, "check");
+    renderHistory();
+    localStorage.setItem("nz_last_reminder", today);
+  }
+})();
+
+/* ─────────────────────────────────────────────
+   FIREBASE INTEGRATION STUB
+   ──────────────────────────────────────────────
+   To enable cloud sync, replace localStorage calls
+   with Firestore equivalents:
+
+   1. Create firebase.js with your config
+   2. Import Firestore methods
+   3. Replace saveState() → setDoc(doc(db,"checklist","main"), {items: checklist})
+   4. Replace loadState() → getDoc(doc(db,"checklist","main"))
+   5. Replace saveNotes() / loadNotes() similarly for "notes" collection
+   6. Replace addHistory() / loadHistory() for "history" collection
+
+   The app is fully functional offline with localStorage.
+   ───────────────────────────────────────────── */
+</script>
+</body>
+</html>
