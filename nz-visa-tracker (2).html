@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NZ Visa Tracker 🇳🇿</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --kiwi:    #00875A;
+      --kiwi-lt: #00B074;
+      --sand:    #F5F0E8;
+      --ink:     #1A1F2E;
+      --red:     #D94040;
+      --gold:    #E8A020;
+      --card:    #FFFFFF;
+      --border:  #E2DDD6;
+      --font:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    html { font-size: 16px; }
+    body {
+      font-family: var(--font);
+      background: var(--sand);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .header-bar {
+      background: var(--ink); color: #fff;
+      padding: 16px 20px; position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-bar h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+    .header-sub { font-size: .67rem; color: rgba(255,255,255,.4); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+
+    /* Progress */
+    .progress-wrap {
+      background: var(--ink); padding: 16px 20px 20px;
+      display: flex; align-items: center; gap: 18px;
+      border-bottom: 3px solid var(--kiwi);
+    }
+    .ring-container { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+    .ring-svg { width: 80px; height: 80px; }
+    .ring-bg  { fill: none; stroke: rgba(255,255,255,.12); stroke-width: 7; }
+    .ring-fg  { fill: none; stroke: var(--kiwi-lt); stroke-width: 7; stroke-linecap: round;
+                stroke-dasharray: 251.3; stroke-dashoffset: 251.3;
+                transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1);
+                transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-pct { font-weight: 800; font-size: 1.05rem; color: #fff; }
+    .ring-sub { font-size: .58rem; color: rgba(255,255,255,.45); letter-spacing: .06em; text-transform: uppercase; }
+    .progress-text h2 { font-size: .95rem; font-weight: 700; color: #fff; }
+    .progress-text p  { font-size: .78rem; color: rgba(255,255,255,.55); margin-top: 3px; }
+    .status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 7px; }
+    .pill-warn { background: rgba(232,160,32,.2);  color: var(--gold); }
+    .pill-ok   { background: rgba(0,176,116,.2);   color: var(--kiwi-lt); }
+    .pill-na   { background: rgba(255,255,255,.1); color: rgba(255,255,255,.45); }
+
+    /* Tabs */
+    .tab-bar { display: flex; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 53px; z-index: 39; }
+    .tab-btn { flex: 1; padding: 11px 2px; font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; border: none; background: transparent; cursor: pointer; color: #999; border-bottom: 3px solid transparent; transition: color .2s, border-color .2s; font-family: var(--font); }
+    .tab-btn.active { color: var(--kiwi); border-bottom-color: var(--kiwi); }
+
+    /* Sections */
+    .section { display: none; padding: 16px; padding-bottom: 100px; }
+    .section.active { display: block; }
+    .section-label { font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #aaa; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+
+    /* Task cards */
+    .task-card { background: var(--card); border-radius: 12px; border: 1.5px solid var(--border); margin-bottom: 10px; overflow: hidden; transition: border-color .2s; }
+    .task-card.done { border-color: var(--kiwi); background: #f0fdf6; }
+    .task-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+    .task-checkbox { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; background: #fff; transition: background .2s, border-color .2s; cursor: pointer; }
+    .task-card.done .task-checkbox { background: var(--kiwi); border-color: var(--kiwi); }
+    .checkmark { display: none; color: #fff; font-size: .85rem; font-weight: 800; }
+    .task-card.done .checkmark { display: block; }
+    .task-title { flex: 1; font-size: .9rem; font-weight: 500; line-height: 1.3; }
+    .task-card.done .task-title { text-decoration: line-through; color: #999; }
+    .task-tag { font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; flex-shrink: 0; }
+    .tag-required { background: #FEE2E2; color: var(--red); }
+    .tag-optional { background: #DCFCE7; color: var(--kiwi); }
+    .expand-icon { color: #bbb; font-size: .7rem; margin-left: 2px; transition: transform .2s; flex-shrink: 0; }
+    .task-card.expanded .expand-icon { transform: rotate(180deg); }
+    .task-body { display: none; padding: 12px 16px 14px 50px; border-top: 1px dashed var(--border); }
+    .task-card.expanded .task-body { display: block; }
+    .task-body p { font-size: .82rem; color: #666; line-height: 1.55; }
+    .upload-zone { display: block; margin-top: 10px; border: 2px dashed var(--border); border-radius: 8px; padding: 10px 12px; text-align: center; font-size: .78rem; color: #aaa; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+    .upload-zone:hover { border-color: var(--kiwi); background: #f0fdf6; color: var(--kiwi); }
+    .upload-zone input { display: none; }
+    .file-chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .file-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--sand); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: .72rem; color: var(--ink); }
+    .file-chip button { background: none; border: none; cursor: pointer; color: #bbb; font-size: .85rem; padding: 0; line-height: 1; }
+    .file-chip button:hover { color: var(--red); }
+
+    /* Missing */
+    .missing-card { background: #FFF5F5; border: 1.5px solid #FCC; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+    .missing-card h3 { font-size: .85rem; font-weight: 700; color: var(--red); margin-bottom: 10px; }
+    .missing-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #FCC; font-size: .85rem; }
+    .missing-item:last-child { border-bottom: none; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red { background: var(--red); }
+    .dot-gold { background: var(--gold); }
+    .missing-opt { background: #FFFBF0; border-color: #F5E0A0; }
+    .missing-opt h3 { color: var(--gold); }
+    .missing-opt .missing-item { border-bottom-color: #F5E0A0; }
+    .all-done-card { background: #F0FDF6; border: 1.5px solid var(--kiwi); border-radius: 12px; padding: 28px 20px; text-align: center; }
+    .all-done-card .e-big { font-size: 2.5rem; margin-bottom: 8px; }
+    .all-done-card h3 { font-weight: 800; font-size: 1.1rem; color: var(--kiwi); margin-bottom: 4px; }
+    .all-done-card p { font-size: .82rem; color: #555; }
+
+    /* Notes */
+    .note-input-area { margin-bottom: 20px; }
+    .note-input-area textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; font-family: var(--font); font-size: .9rem; background: #fff; resize: vertical; min-height: 100px; outline: none; transition: border-color .2s; color: var(--ink); }
+    .note-input-area textarea:focus { border-color: var(--gold); }
+    .btn-save-note { margin-top: 10px; width: 100%; padding: 12px; background: var(--gold); color: #fff; font-family: var(--font); font-weight: 700; font-size: .9rem; border: none; border-radius: 10px; cursor: pointer; transition: background .2s; }
+    .btn-save-note:hover { background: #c98500; }
+    .note-card { background: #FFFBF0; border: 1.5px solid #F5E0A0; border-radius: 12px; padding: 14px; margin-bottom: 10px; position: relative; }
+    .note-text { font-size: .88rem; line-height: 1.6; white-space: pre-wrap; padding-right: 24px; }
+    .note-time { font-size: .7rem; color: #aaa; margin-top: 6px; }
+    .delete-note { position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; color: #ccc; font-size: .9rem; padding: 2px; }
+    .delete-note:hover { color: var(--red); }
+
+    /* History */
+    .history-item { display: flex; align-items: flex-start; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+    .history-item:last-child { border-bottom: none; }
+    .h-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .88rem; }
+    .h-check { background: #F0FDF6; }
+    .h-note  { background: #FFFBF0; }
+    .h-file  { background: #EFF6FF; }
+    .h-action { font-size: .85rem; font-weight: 500; line-height: 1.4; }
+    .h-time   { font-size: .7rem; color: #aaa; margin-top: 2px; }
+    .btn-clear { font-size: .68rem; color: #bbb; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-family: var(--font); }
+    .btn-clear:hover { color: var(--red); border-color: var(--red); }
+
+    /* Empty */
+    .empty-state { text-align: center; padding: 40px 16px; color: #bbb; font-size: .88rem; }
+    .empty-state .e-icon { font-size: 2.4rem; margin-bottom: 8px; }
+
+    /* FAB */
+    .fab { position: fixed; bottom: 24px; right: 20px; z-index: 50; width: 52px; height: 52px; border-radius: 50%; background: var(--gold); color: #fff; font-size: 1.3rem; border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(232,160,32,.5); display: flex; align-items: center; justify-content: center; transition: transform .2s, box-shadow .2s; }
+    .fab:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(232,160,32,.65); }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(26,31,46,.65); align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 20px 20px 36px; animation: slideUp .28s cubic-bezier(.4,0,.2,1); }
+    @keyframes slideUp { from { transform: translateY(48px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-handle { width: 40px; height: 4px; background: #e5e5e5; border-radius: 2px; margin: 0 auto 16px; }
+    .modal-sheet h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 12px; }
+    .modal-sheet textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; font-family: var(--font); font-size: .9rem; background: var(--sand); resize: vertical; min-height: 110px; outline: none; color: var(--ink); }
+    .modal-sheet textarea:focus { border-color: var(--gold); }
+    .modal-btns { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-primary { flex: 1; padding: 13px; background: var(--kiwi); color: #fff; font-family: var(--font); font-weight: 700; font-size: .9rem; border: none; border-radius: 10px; cursor: pointer; transition: background .2s; }
+    .btn-primary:hover { background: var(--kiwi-lt); }
+    .btn-cancel { padding: 13px 18px; background: var(--sand); color: var(--ink); font-family: var(--font); font-weight: 600; font-size: .9rem; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(16px); background: var(--ink); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: .82rem; font-weight: 500; opacity: 0; transition: opacity .25s, transform .25s; z-index: 99; white-space: nowrap; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header class="header-bar">
+  <h1>🇳🇿 NZ Visa Tracker</h1>
+  <span class="header-sub">Student Visa</span>
+</header>
+
+<div class="progress-wrap">
+  <div class="ring-container">
+    <svg class="ring-svg" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
+      <circle class="ring-bg" cx="44" cy="44" r="40"/>
+      <circle class="ring-fg" id="ringFg" cx="44" cy="44" r="40"/>
+    </svg>
+    <div class="ring-label">
+      <span class="ring-pct" id="ringPct">0%</span>
+      <span class="ring-sub">done</span>
+    </div>
+  </div>
+  <div class="progress-text">
+    <h2 id="progressTitle">Let's get started</h2>
+    <p id="progressDesc">0 of 9 documents ready</p>
+    <span class="status-pill pill-na" id="statusPill">Not started</span>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('checklist',this)">✅ Checklist</button>
+  <button class="tab-btn" onclick="showTab('missing',this)">❌ Missing</button>
+  <button class="tab-btn" onclick="showTab('notes',this)">📝 Notes</button>
+  <button class="tab-btn" onclick="showTab('history',this)">🕒 History</button>
+</nav>
+
+<section class="section active" id="tab-checklist">
+  <div class="section-label">Required Documents</div>
+  <ul id="taskList" style="list-style:none"></ul>
+</section>
+
+<section class="section" id="tab-missing">
+  <div class="section-label">Items Still Needed</div>
+  <div id="missingList"></div>
+</section>
+
+<section class="section" id="tab-notes">
+  <div class="section-label">Add a Note</div>
+  <div class="note-input-area">
+    <textarea id="inlineNoteInput" placeholder="Write something to remember about your visa application…"></textarea>
+    <button class="btn-save-note" onclick="saveInlineNote()">💾 Save Note</button>
+  </div>
+  <div class="section-label">Saved Notes</div>
+  <div id="notesList"></div>
+</section>
+
+<section class="section" id="tab-history">
+  <div class="section-label">
+    Activity Log
+    <button class="btn-clear" onclick="clearHistory()">Clear all</button>
+  </div>
+  <div id="historyList"></div>
+</section>
+
+<button class="fab" onclick="openModal()" title="Quick note">📝</button>
+
+<div class="modal-overlay" id="noteModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2>Quick Note</h2>
+    <textarea id="modalNoteInput" placeholder="Write something to remember…"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveModalNote()">💾 Save Note</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var DEFAULT_CHECKLIST = [
+  {id:"passport",        title:"Passport Copy",                tag:"required", description:"Clear scanned copy of your passport bio-data page. Must be valid for at least 3 months beyond your intended stay.",                                                                      completed:false, files:[]},
+  {id:"offer_letter",    title:"Offer Letter",                 tag:"required", description:"Official acceptance letter from your New Zealand institution confirming your enrollment.",                                                                                                 completed:false, files:[]},
+  {id:"sop",             title:"Statement of Purpose (SOP)",   tag:"required", description:"A written statement explaining why you chose this course, institution, and your future career goals.",                                                                                     completed:false, files:[]},
+  {id:"transcripts",     title:"Academic Transcripts",         tag:"required", description:"Official academic transcripts from all previously attended educational institutions.",                                                                                                     completed:false, files:[]},
+  {id:"financial_proof", title:"Financial Proof",              tag:"required", description:"Bank statements (last 6 months), scholarship letters, or sponsorship documents proving you can fund your stay.",                                                                          completed:false, files:[]},
+  {id:"medical_report",  title:"Medical Report (eMedical)",    tag:"required", description:"Health examination completed via an Immigration NZ approved physician through the eMedical system.",                                                                                      completed:false, files:[]},
+  {id:"police_cert",     title:"Police Clearance Certificate", tag:"required", description:"Certificate from the police authority in every country you have lived in for 12+ months in the past 10 years.",                                                                          completed:false, files:[]},
+  {id:"english_proof",   title:"English Language Proof",       tag:"optional", description:"IELTS / TOEFL / PTE score report — required only if your medium of instruction was not English.",                                                                                        completed:false, files:[]},
+  {id:"photo",           title:"Passport-size Photo",          tag:"optional", description:"Recent colour passport photo (35x45 mm, white background, taken within the last 6 months).",                                                                                            completed:false, files:[]}
+];
+
+function loadChecklist() {
+  try { var s = localStorage.getItem("nzvt_checklist"); if (s) return JSON.parse(s); } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
+}
+function saveChecklist()  { try { localStorage.setItem("nzvt_checklist", JSON.stringify(checklist)); } catch(e) {} }
+function loadHistory()    { try { return JSON.parse(localStorage.getItem("nzvt_history") || "[]"); } catch(e) { return []; } }
+function saveHistoryLS()  { try { localStorage.setItem("nzvt_history", JSON.stringify(history)); } catch(e) {} }
+function loadNotes()      { try { return JSON.parse(localStorage.getItem("nzvt_notes") || "[]"); } catch(e) { return []; } }
+function saveNotesLS()    { try { localStorage.setItem("nzvt_notes", JSON.stringify(notes)); } catch(e) {} }
+
+var checklist = loadChecklist();
+var history   = loadHistory();
+var notes     = loadNotes();
+
+function addHistory(action, type) {
+  history.unshift({action:action, type:type, ts:new Date().toISOString()});
+  if (history.length > 120) history.length = 120;
+  saveHistoryLS();
+}
+
+function fmtTime(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString("en-NZ",{day:"numeric",month:"short",year:"numeric"}) + " · " +
+         d.toLocaleTimeString("en-NZ",{hour:"2-digit",minute:"2-digit"});
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function updateProgress() {
+  var total   = checklist.length;
+  var done    = checklist.filter(function(t){return t.completed;}).length;
+  var reqAll  = checklist.filter(function(t){return t.tag==="required";});
+  var reqDone = reqAll.filter(function(t){return t.completed;}).length;
+  var pct     = total ? Math.round((done/total)*100) : 0;
+  var C       = 251.3;
+  document.getElementById("ringFg").style.strokeDashoffset = C - (pct/100)*C;
+  document.getElementById("ringPct").textContent  = pct + "%";
+  document.getElementById("progressDesc").textContent = done + " of " + total + " documents ready";
+  var pill  = document.getElementById("statusPill");
+  var title = document.getElementById("progressTitle");
+  if (pct === 0)                       { title.textContent="Let's get started";       pill.textContent="Not started";                            pill.className="status-pill pill-na"; }
+  else if (reqDone < reqAll.length)    { title.textContent="In progress\u2026";       pill.textContent=(reqAll.length-reqDone)+" required missing"; pill.className="status-pill pill-warn"; }
+  else if (pct < 100)                  { title.textContent="Almost there!";           pill.textContent="Required docs done \u2713";              pill.className="status-pill pill-ok"; }
+  else                                 { title.textContent="Application ready! \uD83C\uDF89"; pill.textContent="All docs complete";              pill.className="status-pill pill-ok"; }
+}
+
+function renderChecklist() {
+  var list = document.getElementById("taskList");
+  list.innerHTML = "";
+  checklist.forEach(function(task, idx) {
+    var li = document.createElement("li");
+    li.className = "task-card" + (task.completed ? " done" : "");
+    var filesHtml = task.files.map(function(f, fi) {
+      return '<span class="file-chip">\uD83D\uDCCE ' + esc(f.name) +
+             '<button onclick="removeFile(' + idx + ',' + fi + ')" title="Remove">\u00D7</button></span>';
+    }).join("");
+    li.innerHTML =
+      '<div class="task-header" onclick="toggleExpand(this)">' +
+        '<div class="task-checkbox" onclick="event.stopPropagation();toggleTask(' + idx + ')">' +
+          '<span class="checkmark">\u2713</span>' +
+        '</div>' +
+        '<span class="task-title">' + esc(task.title) + '</span>' +
+        '<span class="task-tag ' + (task.tag==="required"?"tag-required":"tag-optional") + '">' + task.tag + '</span>' +
+        '<span class="expand-icon">\u25BC</span>' +
+      '</div>' +
+      '<div class="task-body">' +
+        '<p>' + esc(task.description) + '</p>' +
+        '<label class="upload-zone">' +
+          '<input type="file" multiple onchange="handleUpload(event,' + idx + ')" />' +
+          '\uD83D\uDCCE Attach file(s)' +
+        '</label>' +
+        '<div class="file-chips">' + filesHtml + '</div>' +
+      '</div>';
+    list.appendChild(li);
+  });
+  updateProgress();
+}
+
+function toggleExpand(header) {
+  header.closest(".task-card").classList.toggle("expanded");
+}
+
+function toggleTask(idx) {
+  checklist[idx].completed = !checklist[idx].completed;
+  saveChecklist();
+  addHistory((checklist[idx].completed ? "Marked complete: " : "Unchecked: ") + checklist[idx].title, "check");
+  renderChecklist();
+  renderMissing();
+  renderHistory();
+  showToast(checklist[idx].completed ? "\u2705 Marked as done!" : "\u21A9\uFE0F Marked as pending");
+}
+
+function handleUpload(event, idx) {
+  Array.from(event.target.files).forEach(function(f) {
+    checklist[idx].files.push({name:f.name, size:f.size});
+    addHistory('Attached "' + f.name + '" to ' + checklist[idx].title, "file");
+  });
+  saveChecklist();
+  renderChecklist();
+  renderHistory();
+  showToast("\uD83D\uDCCE File(s) attached");
+}
+
+function removeFile(taskIdx, fileIdx) {
+  var fn = checklist[taskIdx].files[fileIdx].name;
+  checklist[taskIdx].files.splice(fileIdx, 1);
+  saveChecklist();
+  addHistory('Removed "' + fn + '" from ' + checklist[taskIdx].title, "file");
+  renderChecklist();
+  renderHistory();
+  showToast("\uD83D\uDDD1\uFE0F File removed");
+}
+
+function renderMissing() {
+  var container = document.getElementById("missingList");
+  var missing = checklist.filter(function(t){return !t.completed;});
+  if (!missing.length) {
+    container.innerHTML = '<div class="all-done-card"><div class="e-big">\uD83C\uDF89</div><h3>All Documents Ready!</h3><p>You\'ve completed your entire NZ visa document checklist. You\'re all set to apply!</p></div>';
+    return;
+  }
+  var req = missing.filter(function(t){return t.tag==="required";});
+  var opt = missing.filter(function(t){return t.tag==="optional";});
+  var html = "";
+  if (req.length) {
+    html += '<div class="missing-card"><h3>\u274C Required \u2014 ' + req.length + ' missing</h3>';
+    req.forEach(function(t){ html += '<div class="missing-item"><span class="dot dot-red"></span><span>' + esc(t.title) + '</span></div>'; });
+    html += '</div>';
+  }
+  if (opt.length) {
+    html += '<div class="missing-card missing-opt"><h3>\u26A0\uFE0F Optional \u2014 ' + opt.length + ' pending</h3>';
+    opt.forEach(function(t){ html += '<div class="missing-item"><span class="dot dot-gold"></span><span>' + esc(t.title) + '</span></div>'; });
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function renderNotesList() {
+  var container = document.getElementById("notesList");
+  if (!notes.length) {
+    container.innerHTML = '<div class="empty-state"><div class="e-icon">\uD83D\uDCD3</div><p>No notes yet. Add one above.</p></div>';
+    return;
+  }
+  container.innerHTML = notes.map(function(n,i) {
+    return '<div class="note-card"><div class="note-text">' + esc(n.text) + '</div><div class="note-time">\uD83D\uDD52 ' + fmtTime(n.ts) + '</div><button class="delete-note" onclick="deleteNote(' + i + ')" title="Delete">\uD83D\uDDD1</button></div>';
+  }).join("");
+}
+
+function saveInlineNote() {
+  var inp = document.getElementById("inlineNoteInput"), text = inp.value.trim();
+  if (!text) { showToast("\u26A0\uFE0F Please write something first"); return; }
+  notes.unshift({text:text, ts:new Date().toISOString()});
+  saveNotesLS();
+  addHistory("Added a note", "note");
+  inp.value = "";
+  renderNotesList(); renderHistory();
+  showToast("\uD83D\uDCDD Note saved!");
+}
+
+function deleteNote(idx) {
+  notes.splice(idx, 1);
+  saveNotesLS();
+  renderNotesList();
+  showToast("\uD83D\uDDD1\uFE0F Note deleted");
+}
+
+function renderHistory() {
+  var container = document.getElementById("historyList");
+  if (!history.length) {
+    container.innerHTML = '<div class="empty-state"><div class="e-icon">\uD83D\uDD52</div><p>No activity yet.</p></div>';
+    return;
+  }
+  var iconMap  = {check:"\u2705", note:"\uD83D\uDCDD", file:"\uD83D\uDCCE"};
+  var classMap = {check:"h-check", note:"h-note", file:"h-file"};
+  container.innerHTML = history.map(function(h) {
+    return '<div class="history-item"><div class="h-icon ' + (classMap[h.type]||"h-check") + '">' + (iconMap[h.type]||"\uD83D\uDCCB") + '</div><div><div class="h-action">' + esc(h.action) + '</div><div class="h-time">' + fmtTime(h.ts) + '</div></div></div>';
+  }).join("");
+}
+
+function clearHistory() {
+  if (!confirm("Clear all activity history?")) return;
+  history = []; saveHistoryLS(); renderHistory();
+  showToast("\uD83D\uDDD1\uFE0F History cleared");
+}
+
+function openModal() {
+  document.getElementById("noteModal").classList.add("open");
+  setTimeout(function(){ document.getElementById("modalNoteInput").focus(); }, 300);
+}
+function closeModal() {
+  document.getElementById("noteModal").classList.remove("open");
+  document.getElementById("modalNoteInput").value = "";
+}
+function saveModalNote() {
+  var text = document.getElementById("modalNoteInput").value.trim();
+  if (!text) { showToast("\u26A0\uFE0F Please write something first"); return; }
+  notes.unshift({text:text, ts:new Date().toISOString()});
+  saveNotesLS();
+  addHistory("Added a note", "note");
+  renderNotesList(); renderHistory();
+  closeModal();
+  showToast("\uD83D\uDCDD Note saved!");
+}
+document.getElementById("noteModal").addEventListener("click", function(e){ if(e.target===this) closeModal(); });
+
+function showTab(name, btn) {
+  document.querySelectorAll(".section").forEach(function(s){s.classList.remove("active");});
+  document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");});
+  document.getElementById("tab-"+name).classList.add("active");
+  btn.classList.add("active");
+  if(name==="missing") renderMissing();
+  if(name==="notes")   renderNotesList();
+  if(name==="history") renderHistory();
+}
+
+var toastTimer;
+function showToast(msg) {
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+}
+
+renderChecklist();
+renderMissing();
+renderNotesList();
+renderHistory();
+
+(function(){
+  var last  = localStorage.getItem("nzvt_last_reminder");
+  var today = new Date().toDateString();
+  if (last === today) return;
+  var missing = checklist.filter(function(t){return !t.completed && t.tag==="required";});
+  if (missing.length) {
+    addHistory("\uD83D\uDCC5 Daily reminder: " + missing.length + " required document(s) still missing", "check");
+    renderHistory();
+    localStorage.setItem("nzvt_last_reminder", today);
+  }
+})();
+</script>
+</body>
+</html>
